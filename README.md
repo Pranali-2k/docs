@@ -13,7 +13,7 @@ Email → Request Intake → Patient Match → AI Analysis → Auto Response OR 
 | Layer | Technology |
 |---|---|
 | Backend logic | Python 3.11+, FastAPI, SQLAlchemy 2 |
-| Database | PostgreSQL (SQLite supported only for tests and offline demos) |
+| Database | PostgreSQL only, with Alembic migrations, triggers and stored procedures (see [Database](docs/DATABASE.md)) |
 | LLM | Pluggable: **Azure OpenAI**, **OpenAI**, **Google Gemini**, **Hugging Face** (router / TGI), or `mock` (offline rule engine) |
 | Frontend | Node.js: React 19 + Vite 6 + Tailwind CSS v4, using the Iyra HealthCare design system (warm linen canvas, EB Garamond / Inter, sage accents, lucide icons). Served in production by an Express server that proxies `/api` |
 | Email | Microsoft Graph (Outlook / M365), IMAP/SMTP, or a safe outbox |
@@ -46,7 +46,6 @@ Put the printed URL in `backend\.env`:
 DATABASE_URL=postgresql+psycopg://docshealth:<password>@localhost:5432/docshealth
 ```
 
-For an offline demo without PostgreSQL, use `DATABASE_URL=sqlite:///./data/docshealth.db` instead.
 
 ```powershell
 .\run.ps1 initdb         # tables + reference data + fictional demo patients

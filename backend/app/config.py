@@ -11,10 +11,17 @@ class Settings(BaseSettings):
     )
 
     environment: str = "dev"
-    database_url: str = "sqlite:///./data/docshealth.db"
-    # Admin/owner connection used only for schema changes (create tables, add columns).
+    # PostgreSQL only. No credentials belong in this default: set DATABASE_URL in backend/.env or the environment.
+    database_url: str = "postgresql+psycopg://localhost:5432/docshealth"
+    # Admin/owner connection used only for schema changes (alembic upgrade head).
     # The API itself runs as the least-privilege DATABASE_URL role.
     migration_database_url: str = ""
+    # Connection pool for the API.
+    db_pool_size: int = 10
+    db_max_overflow: int = 10
+    db_pool_recycle_seconds: int = 1800
+    db_pool_timeout_seconds: int = 30
+    db_statement_timeout_ms: int = 30000
     jwt_secret: str = "dev-insecure-secret-change-me"
     jwt_expire_minutes: int = 720
     # Healthcare Ecosystem gateway sign-in; off while the secret is empty.

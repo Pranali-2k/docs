@@ -59,6 +59,7 @@ def demographics(p: Patient) -> dict:
         "work_phone": format_phone(p.work_phone), "preferred_contact_method": p.preferred_contact_method,
         "email": p.email, "address_line1": p.address_line1, "address_line2": p.address_line2, "city": p.city,
         "state": p.state, "postal_code": p.postal_code,
+        "pcp_name": p.pcp_name, "pms_id": p.pms_id, "portal_status": p.portal_status or "inactive",
     }
 
 

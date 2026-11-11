@@ -19,12 +19,15 @@ from sqlalchemy import (
     Date,
     DateTime,
     Float,
+    Index,
+    func,
     ForeignKey,
     Integer,
     String,
     Text,
     Time,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -118,6 +121,10 @@ class PayerPlan(Base):
 class Provider(Base):
     __tablename__ = "providers"
     id: Mapped[int] = mapped_column(primary_key=True)
+    created_by: Mapped[str | None] = mapped_column(String(120))  # filled by the stamp trigger from app.actor
+    updated_by: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     full_name: Mapped[str] = mapped_column(String(200))
     specialty: Mapped[str] = mapped_column(String(120))
     npi: Mapped[str] = mapped_column(String(20), unique=True)
@@ -166,6 +173,8 @@ class ProviderBlock(Base):
 
     __tablename__ = "provider_blocks"
     id: Mapped[int] = mapped_column(primary_key=True)
+    updated_by: Mapped[str | None] = mapped_column(String(120))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     provider_id: Mapped[int] = mapped_column(ForeignKey("providers.id", ondelete="CASCADE"), index=True)
     start_at: Mapped[datetime] = mapped_column(DateTime, index=True)
     end_at: Mapped[datetime] = mapped_column(DateTime)
@@ -179,6 +188,8 @@ class ProviderBlock(Base):
 class Patient(Base):
     __tablename__ = "patients"
     id: Mapped[int] = mapped_column(primary_key=True)
+    created_by: Mapped[str | None] = mapped_column(String(120))  # filled by the stamp trigger from app.actor
+    updated_by: Mapped[str | None] = mapped_column(String(120))
     mrn: Mapped[str] = mapped_column(String(30), unique=True, index=True)
     prefix: Mapped[str | None] = mapped_column(String(20))
     first_name: Mapped[str] = mapped_column(String(100), index=True)
@@ -209,6 +220,9 @@ class Patient(Base):
     postal_code: Mapped[str | None] = mapped_column(String(20))
     preferred_provider_id: Mapped[int | None] = mapped_column(ForeignKey("providers.id", ondelete="SET NULL"))
     notes: Mapped[str | None] = mapped_column(Text)
+    pcp_name: Mapped[str | None] = mapped_column(String(200))  # primary care physician (free text, may be outside this practice)
+    pms_id: Mapped[str | None] = mapped_column(String(60), index=True)  # id in the practice management system
+    portal_status: Mapped[str | None] = mapped_column(String(10), default="inactive")  # inactive | invited | active
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -241,6 +255,9 @@ class Patient(Base):
 class InsurancePolicy(Base):
     __tablename__ = "insurance_policies"
     id: Mapped[int] = mapped_column(primary_key=True)
+    created_by: Mapped[str | None] = mapped_column(String(120))  # filled by the stamp trigger from app.actor
+    updated_by: Mapped[str | None] = mapped_column(String(120))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id", ondelete="CASCADE"), index=True)
     payer_id: Mapped[int] = mapped_column(ForeignKey("payers.id"))
     member_id: Mapped[str] = mapped_column(String(60), index=True)
@@ -281,12 +298,22 @@ class InsurancePolicy(Base):
     patient: Mapped[Patient] = relationship(back_populates="policies")
     payer: Mapped[Payer] = relationship()
 
+    __table_args__ = (
+        # One active policy per patient and coverage order (kept in step with the DB by migration 0005).
+        Index("uq_policy_active_order", "patient_id",
+              text("COALESCE(coverage_order, CASE WHEN is_primary THEN 'primary' ELSE 'secondary' END)"),
+              unique=True, postgresql_where=text("is_active")),
+    )
+
 
 class Guarantor(Base):
     """Person financially responsible for the patient's account."""
 
     __tablename__ = "guarantors"
     id: Mapped[int] = mapped_column(primary_key=True)
+    created_by: Mapped[str | None] = mapped_column(String(120))  # filled by the stamp trigger from app.actor
+    updated_by: Mapped[str | None] = mapped_column(String(120))
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id", ondelete="CASCADE"), unique=True)
     same_as_patient: Mapped[bool | None] = mapped_column(Boolean, default=True)
     relationship_to_patient: Mapped[str | None] = mapped_column(String(30), default="self")
@@ -309,6 +336,8 @@ class PhiRelease(Base):
 
     __tablename__ = "phi_releases"
     id: Mapped[int] = mapped_column(primary_key=True)
+    updated_by: Mapped[str | None] = mapped_column(String(120))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id", ondelete="CASCADE"), index=True)
     recipient_name: Mapped[str] = mapped_column(String(200))
     relationship_to_patient: Mapped[str | None] = mapped_column(String(50))
@@ -402,6 +431,8 @@ class PatientDocument(Base):
 class Appointment(Base):
     __tablename__ = "appointments"
     id: Mapped[int] = mapped_column(primary_key=True)
+    updated_by: Mapped[str | None] = mapped_column(String(120))
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id", ondelete="CASCADE"), index=True)
     provider_id: Mapped[int] = mapped_column(ForeignKey("providers.id"), index=True)
     start_at: Mapped[datetime] = mapped_column(DateTime, index=True)
@@ -454,6 +485,8 @@ class PortalRequest(Base):
 
     __tablename__ = "portal_requests"
     id: Mapped[int] = mapped_column(primary_key=True)
+    created_by: Mapped[str | None] = mapped_column(String(120))  # filled by the stamp trigger from app.actor
+    updated_by: Mapped[str | None] = mapped_column(String(120))
     reference: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     status: Mapped[str] = mapped_column(String(20), default=RequestStatus.RECEIVED.value, index=True)
     intent: Mapped[str | None] = mapped_column(String(30))
@@ -496,6 +529,24 @@ class AuditLog(Base):
     actor: Mapped[str] = mapped_column(String(120), default="system")
     details: Mapped[dict] = mapped_column(JsonType, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class RecordHistory(Base):
+    """Field-level change history written by the core_history trigger for the core business tables.
+
+    It is separate from audit_log (the readable, action-level trail written by the application): this one records
+    exactly which columns changed, whoever or whatever changed them, including direct SQL. Sensitive columns
+    (anything ending _encrypted) are recorded as "changed" without their values.
+    """
+
+    __tablename__ = "record_history"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    table_name: Mapped[str] = mapped_column(String(60), index=True)
+    record_id: Mapped[int] = mapped_column(Integer, index=True)
+    operation: Mapped[str] = mapped_column(String(6))  # insert | update | delete
+    changed_by: Mapped[str] = mapped_column(String(120), default="system")
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+    changes: Mapped[dict] = mapped_column(JsonType, default=dict, server_default="{}")
 
 
 class IntegrationConnection(Base):

@@ -16,7 +16,7 @@ from app.config import get_settings
 from app.db import get_db
 from app.models import Appointment, AuditLog, EligibilityCheck, EmailMessage, Patient, PortalRequest, Provider, RequestStatus, User
 from app.security import current_user
-from app.services import audit, audit_text, draft_chart, email_gateway, pipeline, registration, responder, scheduling
+from app.services import audit, audit_text, db_procs, draft_chart, email_gateway, pipeline, registration, responder, scheduling
 from app.services.extraction import ExtractedRequest
 from app.services.normalize import parse_date
 
@@ -67,8 +67,6 @@ def _day_bounds(day: date) -> tuple[datetime, datetime]:
     zone = _clinic_zone()
     start = datetime.combine(day, time.min, tzinfo=zone).astimezone(timezone.utc)
     end = datetime.combine(day + timedelta(days=1), time.min, tzinfo=zone).astimezone(timezone.utc)
-    if get_settings().database_url.startswith("sqlite"):
-        return start.replace(tzinfo=None), end.replace(tzinfo=None)
     return start, end
 
 
@@ -81,8 +79,6 @@ def request_days(
     """The clinic-local days that have email requests, newest first, with how many: for the day picker."""
     zone = _clinic_zone()
     since = datetime.now(timezone.utc) - timedelta(days=min(max(days, 1), 366))
-    if get_settings().database_url.startswith("sqlite"):
-        since = since.replace(tzinfo=None)
     received = func.coalesce(EmailMessage.received_at, PortalRequest.created_at)
     rows = db.execute(
         select(received, PortalRequest.status)
@@ -293,11 +289,10 @@ def draft_reply(request_id: int, body: DraftReplyIn, db: Session = Depends(get_d
 @router.post("/{request_id}/assign")
 def assign(request_id: int, body: AssignIn, db: Session = Depends(get_db), user: User = Depends(current_user)):
     req = _get(db, request_id)
-    req.assigned_to = body.assignee or user.email
-    if req.status == RequestStatus.NEEDS_REVIEW.value:
-        req.status = RequestStatus.IN_REVIEW.value
-    audit.record(db, "request", req.id, "assigned", user.email, assignee=req.assigned_to)
+    db_procs.scalar(db, "SELECT assign_request(:req, :assignee, :actor)",
+                    {"req": req.id, "assignee": body.assignee, "actor": user.email})
     db.commit()
+    db.refresh(req)
     return detail(db, req)
 
 
@@ -466,14 +461,15 @@ def book_for_request(request_id: int, body: BookIn, db: Session = Depends(get_db
         raise HTTPException(404, "Provider not found")
     start = body.start_at.replace(tzinfo=None)
     try:
-        appt = scheduling.book(db, req.patient, provider, start, request_id=req.id, actor=user.email,
-                               reason=body.visit_reason or (req.extracted or {}).get("appointment", {}).get("visit_reason"))
+        reason = body.visit_reason or (req.extracted or {}).get("appointment", {}).get("visit_reason")
         old = None
         if body.cancel_appointment_id:
             old = db.get(Appointment, body.cancel_appointment_id)
             if old is None or old.patient_id != req.patient_id:
                 raise HTTPException(404, "Appointment to cancel not found for this patient")
-            scheduling.cancel(db, old, actor=user.email, request_id=req.id)
+            appt = scheduling.reschedule(db, old, provider, start, request_id=req.id, actor=user.email, reason=reason)
+        else:
+            appt = scheduling.book(db, req.patient, provider, start, request_id=req.id, actor=user.email, reason=reason)
     except scheduling.SchedulingError as exc:
         db.rollback()
         raise HTTPException(409, str(exc)) from None
@@ -524,11 +520,12 @@ class ResolveIn(BaseModel):
 
 
 def _resolve(db: Session, req: PortalRequest, user: User, note: str, close: bool = False) -> None:
-    req.status = (RequestStatus.CLOSED if close else RequestStatus.RESOLVED).value
-    req.resolution_note = note
-    req.resolved_by = user.email
-    req.resolved_at = datetime.now(timezone.utc)
-    audit.record(db, "request", req.id, "request_closed" if close else "request_resolved", user.email, note=note)
+    try:
+        db_procs.scalar(db, "SELECT resolve_request(:req, :note, :close, :actor)",
+                        {"req": req.id, "note": note, "close": close, "actor": user.email})
+    except db_procs.ProcedureError as exc:
+        raise HTTPException(409, str(exc)) from None
+    db.refresh(req)
 
 
 @router.post("/{request_id}/resolve")

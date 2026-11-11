@@ -3,14 +3,14 @@
     python -m scripts.run_demo
 Used for the PRD's "Future Validation & Demo" step before showing it to scheduling staff.
 """
-from app.db import SessionLocal, create_all
+from app.db import SessionLocal, migrate_to_head
 from app.demo_samples import SAMPLES, render
 from app.seed import seed
 from app.services import email_gateway, pipeline
 
 
 def main() -> None:
-    create_all()
+    migrate_to_head()
     with SessionLocal() as db:
         seed(db, demo=True)
         print(f"{'sample':24} {'status':15} {'intent':17} {'conf':>5}  reasons / action")

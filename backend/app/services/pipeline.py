@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.llm.providers import LLMProvider, get_llm
 from app.models import Appointment, Patient, Payer, PortalRequest, Provider, ProviderNetwork, RequestStatus
-from app.services import audit, draft_chart, eligibility, email_gateway, responder, scheduling
+from app.services import audit, db_procs, draft_chart, eligibility, email_gateway, responder, scheduling
 from app.services.extraction import ExtractedRequest, ExtractionContext, extract_request
 from app.services.matching import MatchResult, match_patient
 from app.services.normalize import name_similarity, normalize_member_id, parse_date
@@ -397,12 +397,15 @@ def _auto_complete(db, req, x: ExtractedRequest, patient: Patient, out: Outcome,
             if settings.auto_book_appointments and not offer_only:
                 pid, start = out.slots[0]
                 provider = db.get(Provider, pid)
-                appt = scheduling.book(db, patient, provider, start, reason=x.appointment.visit_reason,
-                                       request_id=req.id, actor=actor)
+                old = out.target_appt if x.intent == "reschedule" else None
+                if old is not None:  # one transaction: if the new time cannot be booked the original stays booked
+                    appt = scheduling.reschedule(db, old, provider, start, reason=x.appointment.visit_reason,
+                                                 request_id=req.id, actor=actor)
+                else:
+                    appt = scheduling.book(db, patient, provider, start, reason=x.appointment.visit_reason,
+                                           request_id=req.id, actor=actor)
                 facts.update(when=scheduling.fmt_slot(start), provider=provider.full_name, location=provider.location)
-                if x.intent == "reschedule":
-                    old = out.target_appt
-                    scheduling.cancel(db, old, actor=actor, request_id=req.id)
+                if old is not None:
                     facts["old_when"] = scheduling.fmt_slot(old.start_at)
                     kind = "rescheduled"
                 else:
@@ -487,9 +490,8 @@ def _route_to_review(db, req, x: ExtractedRequest, patient: Patient | None, out:
 
 
 def reopen(db: Session, req: PortalRequest, actor: str) -> None:
-    req.status = RequestStatus.NEEDS_REVIEW.value
-    req.resolved_at = None
-    audit.record(db, "request", req.id, "request_reopened", actor)
+    db_procs.scalar(db, "SELECT reopen_request(:req, :actor)", {"req": req.id, "actor": actor})
+    db.refresh(req)
 
 
 def dashboard_counts(db: Session) -> dict[str, int]:

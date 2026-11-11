@@ -31,7 +31,7 @@
 | Module | Responsibility |
 |---|---|
 | `config.py` | All settings from env / `.env` (LLM, email, automation thresholds) |
-| `db.py`, `models.py` | SQLAlchemy engine and ORM models (PostgreSQL, with SQLite for tests and offline demos) |
+| `db.py`, `models.py` | SQLAlchemy engine (pooled PostgreSQL), ORM models and Alembic helpers. Business rules that must hold for every caller live in PostgreSQL procedures and triggers: see `docs/DATABASE.md` |
 | `llm/providers.py` | `LLMProvider` interface with `mock`, `openai`, `azure_openai`, `gemini` and `huggingface` adapters (plain HTTPS, no vendor SDK lock-in) |
 | `services/extraction.py` | Email to `ExtractedRequest` (strict JSON contract, normalization, rule-engine fallback) |
 | `services/matching.py` | Candidate search and weighted evidence scoring (DOB, name, email, phone, member ID); conflict detection |

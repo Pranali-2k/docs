@@ -158,6 +158,9 @@ class DemographicsIn(BaseModel):
     postal_code: str | None = None
     preferred_provider_id: int | None = None
     notes: str | None = None
+    pcp_name: str | None = Field(default=None, max_length=200)
+    pms_id: str | None = Field(default=None, max_length=60)
+    portal_status: str | None = None
 
 
 class PatientIn(DemographicsIn):

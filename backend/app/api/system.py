@@ -1,6 +1,7 @@
 """Auth, email intake, dashboard reporting, audit trail, outbox, demo lab and system info."""
 from __future__ import annotations
 
+import json
 import logging
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -8,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -184,52 +185,16 @@ def poll(db: Session = Depends(get_db), user: User = Depends(current_user)):
 
 @router.get("/dashboard/summary")
 def dashboard(days: int = 30, db: Session = Depends(get_db), _: User = Depends(current_user)):
-    since = datetime.now(timezone.utc) - timedelta(days=days)
-    reqs = db.scalars(select(PortalRequest).where(PortalRequest.created_at >= since)).all()
-    total = len(reqs)
-    by_status = Counter(r.status for r in reqs)
-    by_intent = Counter(r.intent or "unknown" for r in reqs)
-    reasons = Counter(x["code"] for r in reqs for x in (r.review_reasons or []))
-    auto = sum(1 for r in reqs if r.decision == "auto_respond")
-
-    def minutes(a, b):
-        if not a or not b:
-            return None
-        a = a if a.tzinfo else a.replace(tzinfo=timezone.utc)
-        b = b if b.tzinfo else b.replace(tzinfo=timezone.utc)
-        return (b - a).total_seconds() / 60
-
-    resolve_times = [m for r in reqs if (m := minutes(r.created_at, r.resolved_at)) is not None]
-    response_times = [m for r in reqs if (m := minutes(r.created_at, r.first_response_at)) is not None]
-    daily: dict[str, dict[str, int]] = {}
-    for r in reqs:
-        created = r.created_at if r.created_at.tzinfo else r.created_at.replace(tzinfo=timezone.utc)
-        d = daily.setdefault(created.date().isoformat(), {"received": 0, "auto": 0, "review": 0})
-        d["received"] += 1
-        d["auto" if r.decision == "auto_respond" else "review"] += 1
-    today = scheduling.clinic_now().date()
-    lo = datetime.combine(today, datetime.min.time())
-    appts_today = db.scalar(select(func.count()).select_from(Appointment).where(
-        Appointment.status == "booked", Appointment.start_at >= lo, Appointment.start_at < lo + timedelta(days=1)))
-    open_statuses = ("received", "processing", "needs_review", "in_review", "auto_responded")
-    return {
-        "window_days": days,
-        "total_requests": total,
-        "open_requests": sum(by_status.get(s, 0) for s in open_statuses),
-        "needs_review": by_status.get("needs_review", 0) + by_status.get("in_review", 0),
-        "auto_response_rate": round(auto / total, 3) if total else 0,
-        "auto_responded": auto,
-        "avg_minutes_to_resolve": round(sum(resolve_times) / len(resolve_times), 1) if resolve_times else None,
-        "avg_minutes_to_first_response": round(sum(response_times) / len(response_times), 1) if response_times else None,
-        "by_status": dict(by_status),
-        "by_intent": dict(by_intent),
-        "review_reasons": dict(reasons.most_common()),
-        "daily": [{"date": k, **v} for k, v in sorted(daily.items())],
-        "appointments_today": appts_today or 0,
-        "patients": db.scalar(select(func.count()).select_from(Patient)) or 0,
-        "high_priority_open": sum(1 for r in reqs if r.priority == "high" and r.status in open_statuses),
-        "mailboxes": _mailbox_stats(db),
-    }
+    """Request statistics for the last `days` days. The numbers come from the dashboard_summary() database function;
+    the API adds the clinic-local date and the mailbox statistics."""
+    days = min(max(days, 1), 3650)
+    data = db.execute(text("SELECT dashboard_summary(:days, :today)"),
+                      {"days": days, "today": scheduling.clinic_now().date()}).scalar()
+    data = data if isinstance(data, dict) else json.loads(data)
+    # jsonb keeps no key order: list the review reasons most frequent first
+    data["review_reasons"] = dict(sorted(data["review_reasons"].items(), key=lambda kv: (-kv[1], kv[0])))
+    data["mailboxes"] = _mailbox_stats(db)
+    return data
 
 
 def _mailbox_stats(db: Session) -> list[dict]:

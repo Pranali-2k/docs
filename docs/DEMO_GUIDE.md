@@ -13,7 +13,7 @@ Docs Health turns scheduling emails into portal requests, matches each one to a 
 | Layer | Technology |
 | --- | --- |
 | Backend | Python 3.11+, FastAPI, SQLAlchemy 2 |
-| Database | PostgreSQL (SQLite only for tests and offline demos) |
+| Database | PostgreSQL (Alembic migrations, triggers, stored procedures) |
 | AI model | Pluggable: Azure OpenAI, OpenAI, Gemini, Hugging Face, or an offline rule engine (`mock`, the default) |
 | Frontend | React 19, Vite 6, Tailwind v4, served by an Express server that proxies `/api` |
 | Email | Microsoft Graph (Outlook / M365), IMAP/SMTP, or a safe outbox that sends nothing |

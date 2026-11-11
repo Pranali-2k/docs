@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.db import get_db
+from app.db import get_db, set_actor
 from app.models import User
 
 _ITERATIONS = 390_000
@@ -74,6 +74,7 @@ def current_user(
     if creds is None:
         gateway = _gateway_user(request, db)
         if gateway is not None:
+            set_actor(db, gateway.email)
             return gateway
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
     try:
@@ -88,6 +89,7 @@ def current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "User disabled")
     if payload.get("tv", 0) != (user.token_version or 0):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session ended after a password change. Sign in again.")
+    set_actor(db, user.email)  # triggers fill created_by / updated_by and the change history from this
     return user
 
 

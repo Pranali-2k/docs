@@ -22,7 +22,7 @@ def test_the_clinic_is_in_los_angeles() -> None:
 
 def test_a_day_runs_from_midnight_to_midnight_in_los_angeles() -> None:
     start, end = _day_bounds(date(2026, 10, 16))  # PDT: UTC-7
-    assert (start, end) == (datetime(2026, 10, 16, 7, 0), datetime(2026, 10, 17, 7, 0))  # naive UTC on SQLite
+    assert (start, end) == (datetime(2026, 10, 16, 7, 0, tzinfo=timezone.utc), datetime(2026, 10, 17, 7, 0, tzinfo=timezone.utc))
     winter_start, winter_end = _day_bounds(date(2026, 12, 1))  # PST: UTC-8
     assert winter_start.hour == 8 and (winter_end - winter_start) == timedelta(hours=24)
     start, end = _day_bounds(date(2026, 11, 1))  # the day the clocks go back is 25 hours long

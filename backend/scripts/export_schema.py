@@ -11,7 +11,7 @@ from pathlib import Path
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateIndex, CreateTable
 
-from app import models  # noqa: F401
+from app import models, models_chart  # noqa: F401
 from app.db import Base
 
 OUT = Path(__file__).resolve().parents[2] / "docs" / "schema_postgresql.sql"

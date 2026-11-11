@@ -226,6 +226,9 @@ DESCRIBE = {
     "time_blocked": lambda a, d, lk: (f"Blocked provider time from {_slot(d.get('start'))} to {_slot(d.get('end'))}"
                                       + (f" ({d['reason']})" if d.get("reason") else "")),
     "time_unblocked": lambda a, d, lk: f"Freed provider time from {_slot(d.get('start'))} to {_slot(d.get('end'))}",
+    "drug_rule_saved": lambda a, d, lk: f"Saved drug interaction rule {d.get('pair', '')} ({d.get('severity', '')})",
+    "consent_template_saved": lambda a, d, lk: f"Saved consent template “{d.get('name', '')}” (version {d.get('version', 1)})",
+    "intramail_sent": lambda a, d, lk: f"Sent an internal message to {d.get('to', 'a colleague')}",
     "chart_updated": _d_chart_updated,
     "patient_registered": lambda a, d, lk: f"Registered a new patient chart (MRN {d.get('mrn', '')})",
     "demographics_updated": lambda a, d, lk: "Updated patient details: " + (_changes(d.get("changes")) or "no visible change"),
@@ -313,6 +316,17 @@ DESCRIBE = {
     "password_reset_completed": lambda a, d, lk: "Password changed using a reset link",
     "user_renamed": lambda a, d, lk: f"Display name changed from “{d.get('from')}” to “{d.get('to')}”",
 }
+
+# Chart add-on records (alerts, tasks, medications, ...): one generic sentence per verb, built from the entry's summary.
+CHART_LABELS = {
+    "alert": "alert", "allergy": "allergy", "note": "note", "reminder": "reminder", "flag": "patient flag", "task": "task",
+    "link": "linked account", "medication": "medication", "order": "order", "procedure": "procedure", "consent": "consent",
+}
+for _key, _label in CHART_LABELS.items():
+    for _verb, _text in (("added", "Added"), ("updated", "Updated"), ("removed", "Removed"), ("status", "Changed the status of")):
+        DESCRIBE[f"{_key}_{_verb}"] = (
+            lambda a, d, lk, _t=_text, _l=_label: f"{_t} {_l}" + (f": {d['summary']}" if d.get("summary") else "")
+            + (f" ({d['from']} to {d['to']})" if d.get("from") and d.get("to") else ""))
 
 
 def _fallback(a: AuditLog, d: dict) -> str:

@@ -12,8 +12,8 @@ def problems(s: Settings) -> list[str]:
         out.append("JWT_SECRET must be a random value of at least 32 characters")
     if not s.field_encryption_key:
         out.append("FIELD_ENCRYPTION_KEY must be set (python -m scripts.rotate_field_key)")
-    if s.database_url.startswith("sqlite"):
-        out.append("DATABASE_URL must point at PostgreSQL, not SQLite")
+    if not s.database_url.startswith("postgresql"):
+        out.append("DATABASE_URL must point at PostgreSQL")
     if not s.portal_base_url.startswith("https://"):
         out.append("PORTAL_BASE_URL must be https:// (also required by Microsoft for non-localhost redirect URIs)")
     if s.seed_admin_password in WEAK_SEEDS or s.seed_scheduler_password in WEAK_SEEDS:

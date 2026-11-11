@@ -14,9 +14,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 
-from app.api import availability, integrations, patients, requests, scheduling, system
+from app.api import availability, chart_extras, integrations, patients, reports, requests, scheduling, system
 from app.config import get_settings
-from app.db import SessionLocal, create_all
+from app.db import SessionLocal, ensure_schema_current
 from app.prodcheck import check as check_production
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
     s = get_settings()
     check_production(s)  # raises (and the API won't start) if production settings are unsafe
     try:
-        create_all()  # creates new tables / adds new nullable columns on existing databases
+        ensure_schema_current()  # the schema is managed by Alembic; the API only checks it is up to date
     except SQLAlchemyError:
         log.exception("database schema check failed; API will report the database as unavailable")
     tasks = []
@@ -135,7 +135,8 @@ def create_app() -> FastAPI:
             log.error("%s %s -> %s in %.0f ms [req %s]", request.method, request.url.path, response.status_code,
                       (time.perf_counter() - started) * 1000, request_id)
         return response
-    for r in (system.router, requests.router, patients.router, scheduling.router, availability.router, integrations.router):
+    for r in (system.router, requests.router, patients.router, chart_extras.router, reports.router, scheduling.router,
+              availability.router, integrations.router):
         app.include_router(r)
     return app
 

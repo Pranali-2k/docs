@@ -46,8 +46,9 @@ DEMOGRAPHIC_FIELDS = {
     "prefix", "first_name", "middle_name", "last_name", "suffix", "preferred_name", "previous_name",
     "is_test_patient", "marital_status", "date_of_birth", "sex", "phone", "home_phone", "work_phone",
     "preferred_contact_method", "email", "address_line1", "address_line2", "city", "state", "postal_code",
-    "preferred_provider_id", "notes", "drivers_license_state",
+    "preferred_provider_id", "notes", "drivers_license_state", "pcp_name", "pms_id", "portal_status",
 }
+PORTAL_STATUSES = {"inactive", "invited", "active"}
 SENSITIVE_FIELDS = {"ssn", "drivers_license_number"}
 MARITAL_STATUSES = {"single", "married", "divorced", "widowed", "separated", "domestic_partner", "unspecified"}
 POLICY_TYPES = {"PPO", "HMO", "EPO", "POS", "HDHP", "Medicare", "Medicaid", "Other"}
@@ -79,6 +80,11 @@ def _clean(field: str, value):
         return norm
     if field in {"first_name", "last_name", "middle_name"}:
         return value.title() if value.islower() or value.isupper() else value
+    if field == "portal_status":
+        v = value.lower()
+        if v not in PORTAL_STATUSES:
+            raise RegistrationError(f"Portal status must be one of {sorted(PORTAL_STATUSES)}")
+        return v
     if field == "marital_status":
         v = value.lower().replace(" ", "_")
         if v not in MARITAL_STATUSES:

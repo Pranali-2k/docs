@@ -26,11 +26,13 @@ const NAV = [
   { to: '/requests', label: 'Request inbox', icon: Inbox, count: 'review' },
   { to: '/patients', label: 'Patient charts', icon: Users },
   { to: '/schedule', label: 'Schedule', icon: CalendarDays },
+  { to: '/intramail', label: 'Intramail', icon: Mail },
   { to: '/emails', label: 'Email log', icon: Mail },
   { to: '/audit', label: 'Audit trail', icon: History },
   { to: '/demo', label: 'Demo lab', icon: FlaskConical },
   { to: '/settings', label: 'Settings', icon: Settings, end: true },
   { to: '/settings/integrations', label: 'Integrations', icon: Plug, adminOnly: true },
+  { to: '/settings/clinical', label: 'Clinical reference', icon: Settings, adminOnly: true },
 ]
 
 function Brand({ compact = false }) {

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.models import Appointment, Patient, Provider, ProviderAvailability, ProviderBlock
-from app.services import audit
+from app.services import db_procs
 
 
 class SchedulingError(ValueError):
@@ -138,53 +138,48 @@ def book(
     actor: str = "system",
     duration_minutes: int | None = None,
 ) -> Appointment:
-    template = db.scalar(
-        select(ProviderAvailability).where(
-            ProviderAvailability.provider_id == provider.id, ProviderAvailability.weekday == start.weekday()
-        )
-    )
-    minutes = duration_minutes or (template.slot_minutes if template else 30)
-    end = start + timedelta(minutes=minutes)
-    overlap = and_(Appointment.status == "booked", Appointment.start_at < end, Appointment.end_at > start)
-    kept = db.scalar(select(ProviderBlock).where(
-        ProviderBlock.provider_id == provider.id, ProviderBlock.start_at < end, ProviderBlock.end_at > start))
-    if kept is not None:
-        raise SchedulingError(f"{provider.full_name} is unavailable at {start:%Y-%m-%d %H:%M}"
-                              + (f" ({kept.reason})" if kept.reason else ""))
-    if db.scalar(select(Appointment.id).where(Appointment.provider_id == provider.id, overlap)):
-        raise SchedulingError(f"{provider.full_name} is already booked at {start:%Y-%m-%d %H:%M}")
-    if db.scalar(select(Appointment.id).where(Appointment.patient_id == patient.id, overlap)):
-        raise SchedulingError("Patient already has an appointment at that time")
-    appt = Appointment(
-        patient_id=patient.id,
-        provider_id=provider.id,
-        start_at=start,
-        end_at=end,
-        visit_reason=reason,
-        source_request_id=request_id,
-        booked_by=actor,
-    )
-    db.add(appt)
-    db.flush()
-    audit.record(
-        db, "appointment", appt.id, "appointment_booked", actor,
-        patient_id=patient.id, provider_id=provider.id, start=start.isoformat(), request_id=request_id,
-    )
-    audit.record(db, "patient", patient.id, "chart_updated", actor, change="appointment_booked", appointment_id=appt.id)
-    return appt
+    """Book a visit. The rules (provider blocks, double booking, slot length) and the audit rows live in the
+    book_appointment() procedure, so they hold for every caller, including direct SQL."""
+    try:
+        appt_id = db_procs.scalar(
+            db, "SELECT book_appointment(:patient, :provider, :start, :reason, :request, :actor, :minutes)",
+            {"patient": patient.id, "provider": provider.id, "start": start, "reason": reason, "request": request_id,
+             "actor": actor, "minutes": duration_minutes})
+    except db_procs.ProcedureError as exc:
+        raise SchedulingError(str(exc)) from None
+    return db.get(Appointment, appt_id)
 
 
 def cancel(db: Session, appt: Appointment, *, actor: str = "system", request_id: int | None = None) -> Appointment:
-    if appt.status != "booked":
-        raise SchedulingError(f"Appointment is {appt.status}, not booked")
-    appt.status = "cancelled"
-    appt.cancelled_at = datetime.now(timezone.utc)
-    audit.record(
-        db, "appointment", appt.id, "appointment_cancelled", actor,
-        patient_id=appt.patient_id, start=appt.start_at.isoformat(), request_id=request_id,
-    )
-    audit.record(db, "patient", appt.patient_id, "chart_updated", actor, change="appointment_cancelled", appointment_id=appt.id)
+    try:
+        db_procs.scalar(db, "SELECT cancel_appointment(:appt, :actor, :request)",
+                        {"appt": appt.id, "actor": actor, "request": request_id})
+    except db_procs.ProcedureError as exc:
+        raise SchedulingError(str(exc)) from None
+    db.refresh(appt)
     return appt
+
+
+def reschedule(
+    db: Session,
+    old: Appointment,
+    provider: Provider,
+    start: datetime,
+    *,
+    reason: str | None = None,
+    request_id: int | None = None,
+    actor: str = "system",
+) -> Appointment:
+    """Move a visit in one transaction: if the new time cannot be booked, the original visit is left untouched."""
+    try:
+        appt_id = db_procs.scalar(
+            db, "SELECT reschedule_appointment(:old, :provider, :start, :reason, :request, :actor)",
+            {"old": old.id, "provider": provider.id, "start": start, "reason": reason, "request": request_id,
+             "actor": actor})
+    except db_procs.ProcedureError as exc:
+        raise SchedulingError(str(exc)) from None
+    db.refresh(old)
+    return db.get(Appointment, appt_id)
 
 
 def upcoming_for_patient(db: Session, patient_id: int, *, now: datetime | None = None) -> list[Appointment]:

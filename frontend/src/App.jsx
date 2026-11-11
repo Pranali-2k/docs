@@ -18,6 +18,9 @@ import ContactInfo from '@/pages/chart/ContactInfo'
 import Insurance from '@/pages/chart/Insurance'
 import PolicyEdit from '@/pages/chart/PolicyEdit'
 import { Appointments, ChartHistory, ChartRequests, Guarantor, Identity, PhiReleases } from '@/pages/chart/Sections'
+import { ChartKind, Clipboard, LinkedAccounts } from '@/pages/chart/Extras'
+import Intramail from '@/pages/Intramail'
+import ClinicalSettings from '@/pages/ClinicalSettings'
 import Schedule from '@/pages/Schedule'
 import EmailLog from '@/pages/EmailLog'
 import AuditTrail from '@/pages/AuditTrail'
@@ -74,13 +77,20 @@ export default function App() {
             <Route path="insurance/:policyId" element={<PolicyEdit />} />
             <Route path="requests" element={<ChartRequests />} />
             <Route path="history" element={<ChartHistory />} />
+            <Route path="clipboard" element={<Clipboard />} />
+            <Route path="links" element={<LinkedAccounts />} />
+            {['alerts', 'allergies', 'notes', 'reminders', 'flags', 'tasks', 'medications', 'orders', 'procedures', 'consents'].map((k) => (
+              <Route key={k} path={k} element={<ChartKind kind={k} />} />
+            ))}
           </Route>
+          <Route path="intramail" element={<Intramail />} />
           <Route path="schedule" element={<Schedule />} />
           <Route path="emails" element={<EmailLog />} />
           <Route path="audit" element={<AuditTrail />} />
           <Route path="demo" element={<DemoLab />} />
           <Route path="settings" element={<Settings />} />
           <Route path="settings/integrations" element={<Integrations />} />
+          <Route path="settings/clinical" element={<ClinicalSettings />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

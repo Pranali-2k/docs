@@ -6,7 +6,7 @@
 """
 import argparse
 
-from app.db import Base, SessionLocal, create_all, engine
+from app.db import Base, SessionLocal, engine, migrate_to_head
 from app.seed import seed
 
 
@@ -19,7 +19,7 @@ def main() -> None:
         from app import models  # noqa: F401
         Base.metadata.drop_all(engine)
         print("Dropped all tables")
-    create_all()
+    migrate_to_head()
     with SessionLocal() as db:
         seed(db, demo=args.demo)
     print(f"Database ready on {engine.url.render_as_string(hide_password=True)}")

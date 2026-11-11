@@ -18,7 +18,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError, SQLAlchemyError
 
 from app import models  # noqa: F401  (register all tables)
 from app.config import get_settings
-from app.db import Base, SessionLocal, create_all, engine
+from app.db import Base, SessionLocal, engine, migrate_to_head
 
 OK, WARN, FAIL = "PASS", "WARN", "FAIL"
 
@@ -75,7 +75,7 @@ def main() -> int:
     if args.create:
         print("\n2. Creating missing tables / columns")
         try:
-            create_all()
+            migrate_to_head()
             from app.seed import seed
 
             with SessionLocal() as db:

@@ -1,0 +1,19 @@
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--text-ink);
+  font: var(--type-body-md);
+  letter-spacing: var(--ls-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--text-ink);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--text-body-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

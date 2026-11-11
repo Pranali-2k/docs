@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  /* Font Families */
+  --font-display: 'EB Garamond', 'Times New Roman', serif;
+  --font-body: 'Inter', sans-serif;
+
+  /* Display Font Weight */
+  --display-weight: 400;
+
+  /* Display Scale */
+  --type-display-mega: 400 64px/1.05 var(--font-display);
+  --ls-display-mega: -1.92px;
+
+  --type-display-xl: 400 48px/1.08 var(--font-display);
+  --ls-display-xl: -0.96px;
+
+  --type-display-lg: 400 36px/1.17 var(--font-display);
+  --ls-display-lg: -0.36px;
+
+  --type-display-md: 400 32px/1.13 var(--font-display);
+  --ls-display-md: -0.32px;
+
+  --type-display-sm: 400 24px/1.2 var(--font-display);
+  --ls-display-sm: 0px;
+
+  /* Title Scale */
+  --type-title-md: 500 20px/1.35 var(--font-body);
+  --type-title-sm: 500 18px/1.44 var(--font-body);
+  --ls-title-sm: 0.18px;
+
+  /* Body Scale */
+  --type-body-md: 400 16px/1.5 var(--font-body);
+  --ls-body: 0.16px;
+
+  --type-body-strong: 500 16px/1.5 var(--font-body);
+
+  --type-body-sm: 400 15px/1.47 var(--font-body);
+  --ls-body-sm: 0.15px;
+
+  /* Captions, Links & Buttons */
+  --type-caption: 400 14px/1.5 var(--font-body);
+  --type-caption-uppercase: 600 12px/1.4 var(--font-body);
+  --ls-caption-uppercase: 0.96px;
+
+  --type-button: 500 15px/1 var(--font-body);
+  --type-nav-link: 500 15px/1.4 var(--font-body);
+}

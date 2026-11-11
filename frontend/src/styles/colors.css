@@ -1,0 +1,59 @@
+:root {
+  /* Primary Action Colors (Warm deep charcoal / near-black ink) */
+  --color-primary: #242220;
+  --color-primary-hover: #171513;
+  --color-primary-active: #0c0a09;
+
+  /* Canvas & Backgrounds (Warm soothing linen & serene neutrals) */
+  --color-canvas: #faf9f5;
+  --color-canvas-soft: #f4f2ec;
+  --color-canvas-deep: #141210;
+
+  /* Card Surfaces & Elevated Containers */
+  --surface-card: #ffffff;
+  --surface-strong: #f0eee7;
+  --surface-subtle: #f8f7f2;
+  --surface-dark: #171513;
+  --surface-dark-elevated: #242220;
+
+  /* Borders & Hairlines (Gentle warm stone translucency) */
+  --hairline: #e8e5dc;
+  --hairline-soft: #f0eee8;
+  --hairline-strong: #d7d3c7;
+
+  /* Text & Typography Colors */
+  --text-ink: #191715;
+  --text-body: #4a4744;
+  --text-body-strong: #262421;
+  --text-muted: #78746c;
+  --text-muted-soft: #aba69d;
+  --text-on-primary: #ffffff;
+  --text-on-dark: #ffffff;
+  --text-on-dark-soft: #aba69d;
+
+  /* Peaceful Clinical Accent Tones */
+  --color-sage: #38664f;
+  --color-sage-soft: #ebf4ee;
+  --color-sage-border: #cbe3d4;
+  --color-slate-blue: #335069;
+  --color-slate-soft: #eef4f9;
+  --color-slate-border: #d0e1ef;
+  --color-warm-amber: #8c5d1e;
+  --color-warm-amber-soft: #fbf4ea;
+  --color-warm-amber-border: #f2e1ca;
+
+  /* Atmospheric Orbs (Soft, serene pastels) */
+  --gradient-mint: #cbeee3;
+  --gradient-peach: #fae2d2;
+  --gradient-lavender: #e2dcf2;
+  --gradient-sky: #cee3f4;
+  --gradient-rose: #f4dbe1;
+
+  /* Semantic Status Colors */
+  --semantic-success: #2c6e49;
+  --semantic-success-soft: #eaf5ee;
+  --semantic-error: #b33939;
+  --semantic-error-soft: #fdf2f2;
+  --semantic-warning: #99621e;
+  --semantic-warning-soft: #fcf5ea;
+}

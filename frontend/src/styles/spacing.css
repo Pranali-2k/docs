@@ -1,0 +1,15 @@
+:root {
+  /* Spacing Scale */
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-base: 16px;
+  --space-md: 20px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-xxl: 48px;
+  --space-section: 96px;
+
+  /* Layout Container */
+  --container-max: 1200px;
+}

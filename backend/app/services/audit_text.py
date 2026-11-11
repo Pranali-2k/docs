@@ -223,6 +223,9 @@ DESCRIBE = {
     "appointment_cancelled": lambda a, d, lk: (f"Cancelled the {_slot(d.get('start'))} appointment for "
                                                f"{lk.patient(d.get('patient_id'))}"
                                                + (f" ({lk.request(d['request_id'])})" if d.get("request_id") else "")),
+    "time_blocked": lambda a, d, lk: (f"Blocked provider time from {_slot(d.get('start'))} to {_slot(d.get('end'))}"
+                                      + (f" ({d['reason']})" if d.get("reason") else "")),
+    "time_unblocked": lambda a, d, lk: f"Freed provider time from {_slot(d.get('start'))} to {_slot(d.get('end'))}",
     "chart_updated": _d_chart_updated,
     "patient_registered": lambda a, d, lk: f"Registered a new patient chart (MRN {d.get('mrn', '')})",
     "demographics_updated": lambda a, d, lk: "Updated patient details: " + (_changes(d.get("changes")) or "no visible change"),
